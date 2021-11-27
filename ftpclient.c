@@ -21,22 +21,13 @@
 extern int errno;
 char localhost[] = "localhost"; /* default host name */
 /*------------------------------------------------------------------------
- * * Program: client
- * *
- * * Purpose: allocate a socket, connect to a server, and print all output
- * * Syntax: client [ host [port] ]
- * *
- * * host - name of a computer on which server is executing
- * * port - protocol port number server is using
- * *
- * * Note: Both arguments are optional. If no host name is specified,
- * * the client uses "localhost"; if no protocol port is
- * * specified, the client uses the default given by PROTOPORT.
- * *
  * *------------------------------------------------------------------------
  * */
+
+// Size of default recieve/transmit buffer
 const int BUFFERSIZE = 1024;
 
+// function prototypes
 void uploadFile(unsigned int, char*);
 void deleteFile(unsigned int, char*);
 void renameFile(unsigned int, char*);
@@ -44,15 +35,13 @@ void downloadFile(unsigned int, char*);
 void menu(unsigned int);
 
 int main(int argc, char *argv[]) {
+    // BEGIN CODE FROM client.c //
     struct hostent *ptrh; /* pointer to a host table entry */
     struct protoent *ptrp; /* pointer to a protocol table entry */
     struct sockaddr_in sad; /* structure to hold an IP address */
     int sd; /* socket descriptor */
     int port; /* protocol port number */
     char *host; /* pointer to host name */
-    int n; /* number of characters read */
-    char buf[1000]; /* buffer for data from the server */
-    char *task; //DW
     #ifdef WIN32
         WSADATA wsaData;
         WSAStartup(0x0101, &wsaData);
@@ -102,148 +91,308 @@ int main(int argc, char *argv[]) {
         fprintf(stderr,"connect failed\n");
         exit(1);
     }
-    // DW
+    // END CODE FROM client.c //
+
+    // Open FTP Client menu=
     menu(sd);
-//    /* Repeatedly read data from socket and write to user.s screen. */
-//    n = recv(sd, buf, sizeof(buf), 0);
-//    while (n > 0) {
-//        write(1,buf,n);
-//        printf("n: %d\n", n);
-//        n = recv(sd, buf, sizeof(buf), 0);
-//    }
-//    printf("n: %d\n", n);
+
     /* Close the socket. */
     closesocket(sd);
     /* Terminate the client program gracefully. */
     exit(0);
 }
 
+/*******************************************************************************
+ * menu
+ * Display menu and process client input
+ * @param socket : open socket to FTP server
+ ******************************************************************************/
 void menu(unsigned int socket) {
-    int choice = 0;
-    char *allParams;
-    char *input;
+    int choice = 0;     // store client choice
+    char *allParams;    // store concatenated parameters
+    char *input;        // store last input operation
+    // initialize strings
+    allParams = (char*)malloc(BUFFERSIZE);
+    input = (char*)malloc(256);
+
+    // Display menu until user chooses to exit
     while (choice != 5) {
-        allParams = (char*)malloc(BUFFERSIZE);
-        input = (char*)malloc(256);
+        // display menu
         printf("Enter a choice:\n1 - UPLOAD\n2 - DOWNLOAD\n3 - DELETE\n4 - RENAME\n5 - EXIT\n");
+
+        // get user choice
         fgets(input, 3, stdin);
         choice = atoi(input);
+
+        // process choice
         switch(choice) {
-            case 1:
+            case 1: // UPLOAD
+                // initialize allParams with task
                 strcpy(allParams, "UPLOAD ");
+
+                // request filename
                 printf("Enter filename to upload: ");
                 fgets(input, 256, stdin);
+
+                // remove linebreak from filename
                 if (strlen(input) > 0 && input[strlen(input) - 1] == '\n')
                     input[strlen(input) - 1] = '\0';
+
+                // add filename to allParams
                 strcat(allParams, input);
+
+                // upload file
                 uploadFile(socket, allParams);
                 break;
-            case 2:
+            case 2: // DOWNLOAD
+                // initialize allParams with task
                 strcpy(allParams, "DOWNLOAD ");
+
+                // request filename
                 printf("Enter filename to download: ");
                 fgets(input, 256, stdin);
+
+                // remove linebreak from filename
                 if (strlen(input) > 0 && input[strlen(input) - 1] == '\n')
                     input[strlen(input) - 1] = '\0';
+
+                // add filename to allParams
                 strcat(allParams, input);
+
+                // download file
                 downloadFile(socket, allParams);
                 break;
-            case 3:
+            case 3: // DELETE
+                // initialize allParams with task
                 strcpy(allParams, "DELETE ");
+
+                // request filename
                 printf("Enter filename to delete: ");
                 fgets(input, 256, stdin);
+
+                // remove linebreak from filename
                 if (strlen(input) > 0 && input[strlen(input) - 1] == '\n')
                     input[strlen(input) - 1] = '\0';
+
+                // add filename to allParams
                 strcat(allParams, input);
+
+                // delete file
                 deleteFile(socket, allParams);
                 break;
-            case 4:
+            case 4: // RENAME
+                // initialize allParams with task
                 strcpy(allParams, "RENAME ");
+
+                // request original filename
                 printf("Enter filename to rename: ");
                 fgets(input, 256, stdin);
+
+                // remove linebreak from filename
                 if (strlen(input) > 0 && input[strlen(input) - 1] == '\n')
                     input[strlen(input) - 1] = '\0';
+
+                // add original filename to allParams
                 strcat(allParams, input);
                 strcat(allParams, " ");
+
+                // request new filename
                 printf("Enter new filename: ");
                 fgets(input, 256, stdin);
+
+                // remove linebreak from filename
                 if (strlen(input) > 0 && input[strlen(input) - 1] == '\n')
                     input[strlen(input) - 1] = '\0';
+
+                // add new filename to allParams
                 strcat(allParams, input);
+
+                // rename file
                 renameFile(socket, allParams);
                 break;
         }
-        free(allParams);
-        free(input);
     }
+    // free memory
+    free(allParams);
+    free(input);
 }
 
+/*******************************************************************************
+ * uploadFile
+ * Upload specified file to FTP server
+ * @param socket open socket to FTP server
+ * @param params UPLOAD [filename]
+ ******************************************************************************/
 void uploadFile(unsigned int socket, char* params) {
-    char *buffer;
-    char *filename;
+    char *buffer;   // Buffer for transferring or receiving data over socket
+    char *filename; // Filename to upload
+
+    // Send upload command to FTP server
     write(socket, params, strlen(params)+1);
+
+    // parse filename from params
     filename = strtok(params, " ");
     filename = strtok(NULL, " ");
+
+    // Open file to upload
     FILE *file = fopen(filename, "r");
+
+    // If file opens, upload it
     if (file != NULL) {
-        struct stat fileStats;
+        struct stat fileStats;  // File stats
+
+        // Load file stats
         stat(filename, &fileStats);
+
+        // copy filesize from fileStats
         int size = fileStats.st_size;
+
+        // send filesize to FTP server
         write(socket, &size, sizeof(int));
+
+        // wait for response from FTP server
         buffer = (char*)malloc(BUFFERSIZE);
         read(socket, buffer, BUFFERSIZE);
+
+        // load file to buffer
+        free(buffer);
         buffer = (char*)malloc(size);
         fread(buffer, size, 1, file);
+
+        // send file to FTP server
         write(socket, buffer, size);
+
+        // Read results from server
         free(buffer);
         buffer = (char*)malloc(BUFFERSIZE);
         read(socket, buffer, BUFFERSIZE);
-        printf("%s\n", buffer);
-        free(buffer);
+
+        // close file
         fclose(file);
+    } else { // File failed to open
+        // Send size = -1, signifying error
+        int size = -1;
+        write(socket, &size, sizeof(int));
+
+        // read results from FTP server
+        buffer = (char*)malloc(BUFFERSIZE);
+        read(socket, buffer, BUFFERSIZE);
     }
+    // Output results
+    printf("%s\n", buffer);
+
+    // free memory
+    free(buffer);
 }
 
+/*******************************************************************************
+ * deleteFile
+ * Delete specified file from FTP server
+ * @param socket open socket to FTP server
+ * @param params DELETE [filename]
+ ******************************************************************************/
 void deleteFile(unsigned int socket, char* params) {
-    char *buffer;
+    char *buffer;   // Buffer for transferring or receiving data over socket
     buffer = (char*)malloc(BUFFERSIZE);
+
+    // send command to FTP server
     write(socket, params, strlen(params)+1);
+
+    // read result from FTP server
     read(socket, buffer, BUFFERSIZE);
+
+    // output results
     printf("%s\n", buffer);
+
+    // free memory
     free(buffer);
 }
 
+/*******************************************************************************
+ * renameFile
+ * Rename file with new filename on FTP server
+ * @param socket open socket to FTP server
+ * @param params RENAME [original filename] [new filename]
+ ******************************************************************************/
 void renameFile(unsigned int socket, char* params){
-    char *buffer;
+    char *buffer;   // Buffer for transferring or receiving data over socket
     buffer = (char*)malloc(BUFFERSIZE);
+
+    // send rename command to FTP server
     write(socket, params, strlen(params)+1);
+
+    // Read results from FTP server
     read(socket, buffer, BUFFERSIZE);
+
+    // Output results
     printf("%s\n", buffer);
     free(buffer);
 }
 
+/*******************************************************************************
+ * downloadFile
+ * Download file from FTP server
+ * @param socket open socket to FTP server
+ * @param params DOWNLOAD [filename]
+ ******************************************************************************/
 void downloadFile(unsigned int socket, char* params) {
-    char *buffer;
-    char *filename;
-    int size;
+    char *buffer;   // Buffer for transferring or receiving data over socket
+    char *filename; // Filename to download
+    int size;       // Size of file
     buffer = (char*)malloc(BUFFERSIZE);
+
+    // send command to FTP server
     write(socket, params, strlen(params)+1);
+
+    // read filesize from FTP server
     read(socket, buffer, sizeof(int));
     size = (int)buffer[0];
+
+    // acknowledge receipt of size
     strcpy(buffer,"ACK");
     write(socket, buffer, strlen(buffer)+1);
-    filename = strtok(params, " ");
-    filename = strtok(NULL, " ");
-    FILE *file = fopen(filename, "w");
-    free(buffer);
-    buffer = (char*)malloc(size);
-    read(socket, buffer, size);
-    fwrite(buffer, size, 1, file);
-    fclose(file);
-    free(buffer);
-    buffer = (char*)malloc(BUFFERSIZE);
-    strcpy(buffer, "ACK");
-    write(socket, buffer, strlen(buffer)+1);
-    read(socket, buffer, BUFFERSIZE);
+
+    // If size = -1, server could not open file
+    if (size == -1) {
+        // read results from server
+        read(socket, buffer, BUFFERSIZE);
+    } else {
+        // parse filename from params
+        filename = strtok(params, " ");
+        filename = strtok(NULL, " ");
+
+        // create file
+        FILE *file = fopen(filename, "w");
+
+        if (file == NULL) { // unable to create file
+            printf("unable to create %s\n", filename);
+            // clear incoming data
+            free(buffer);
+            buffer = (char*)malloc(size);
+            read(socket, buffer, size);
+        } else {    // file created successfully
+            // read file contents from FTP server
+            free(buffer);
+            buffer = (char*)malloc(size);
+            read(socket, buffer, size);
+
+            // write contents to file
+            fwrite(buffer, size, 1, file);
+
+            // close file
+            fclose(file);
+        }
+
+        // Acknowledge receipt of file
+        free(buffer);
+        buffer = (char *) malloc(BUFFERSIZE);
+        strcpy(buffer, "ACK");
+        write(socket, buffer, strlen(buffer) + 1);
+
+        // read results from FTP server
+        read(socket, buffer, BUFFERSIZE);
+    }
+    // Output result
     printf("%s\n", buffer);
     free(buffer);
 }
