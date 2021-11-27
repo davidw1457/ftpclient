@@ -104,9 +104,7 @@ int main(int argc, char *argv[]) {
 
     // Server has started
     printf("FTP server is on\n");
-    pthread_t threads[200]; // pointers to threads
-    unsigned int i = 0;     // number of threads opened
-    int *socket;            // pointer to socket
+    int *socket; // pointer to socket
     while (1) {
         // attempt to accept a connection
         alen = sizeof(cad);
@@ -120,10 +118,8 @@ int main(int argc, char *argv[]) {
         *socket = sd2;
 
         // create thread
-        pthread_create(&threads[i++], NULL, worker, (void*)socket);
-
-        // close thread
-        pthread_join(threads[i-1], NULL);
+        pthread_t thread;
+        pthread_create(&thread, NULL, worker, (void*)socket);
 
 //        worker((void*)socket); // for testing without threading
     }
