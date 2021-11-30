@@ -45,8 +45,10 @@ gcc ftpclient.c -o ftpclient
 
 User can select 1-5 on the client server to complete file operation to FTP server. 
 
+```
 1 - UPLOAD 
 2 - DOWNLOAD
 3 - DELETE
 4 - RENAME
 5 - EXIT
+```
