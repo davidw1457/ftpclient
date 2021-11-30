@@ -1,5 +1,4 @@
 Program: FTP server
-Date: 11/30/2021
 
 
 - How to compile: 
