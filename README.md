@@ -37,7 +37,7 @@ gcc ftpclient.c -o ftpclient
 ./ftpserver [port]
 
 # client - defaults to localhost and port 8888 if you don't list host and client
-/ftpclient [host] [port]
+./ftpclient [host] [port]
 
 ```
 
